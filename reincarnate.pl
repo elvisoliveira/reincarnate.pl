@@ -30,66 +30,56 @@ use Utils;
 
 Plugins::register('reincarnate', 'automatically delete then (re)create your char', \&onUnload);
 
-my $plugin = Plugins::addHooks(['charSelectScreen', \&charSelectScreen]);
-my $command1 = Commands::register(['reincarnate', 'delete then (re)create your char', \&reincarnate_command]);
-my $command2 = Commands::register(['quitToCharSelect', 'quits to char select screen', \&quitToCharSelect_command]);
+my $plugin = Plugins::addHooks(
+    ['charSelectScreen', \&charSelectScreen]
+);
+my $command = Commands::register(
+    ['reincarnate', 'delete then (re)create your char', \&onCommand]
+);
 
-my $status = "ready";
-my $charPos = 2;
-my $newCharName;
-my $currentCharPos = $charPos;
-my ($str, $agi, $vit, $int, $dex, $luk, $hair_style, $hair_color) =
-   (9   , 9   , 9   , 1   , 1   , 1   , 1          , 1          );
+my $action;
+my ($str, $agi, $vit, $int, $dex, $luk) =
+   (9   , 9   , 9   , 1   , 1   , 1   );
 
 sub onUnload {
-    Commands::unregister($command1);
-    Commands::unregister($command2);
+    Commands::unregister($command);
     Plugins::delHooks($plugin);
 }
+sub onCommand {
+    $action = "delete char";
+    $messageSender->sendQuitToCharSelect();
+}
+
 sub charSelectScreen {
-    my $email = $config{email};
     my ($self, $args) = @_;
-    if (!$chars[$charPos]) {
-        $config{char} = $charPos;
-        $newCharName = generateName(int(rand(2)) + 4, int(rand(2)) + 4);
-        $messageSender->sendCharCreate($charPos, $newCharName, $str, $agi, $vit, $int, $dex, $luk, $hair_style, $hair_color);
-        $timeout{'charlogin'}{'time'} = time;
-        $args->{return} = 2;
-        $status = "character created";
+    if (!$chars[$config{char}]) {
+        $args->{return} = createCharacter();
         return;
     }
-    if ($status eq "start") {
+    if ($action eq "delete char") {
         $messageSender->sendBanCheck($charID);
-        $messageSender->sendCharDelete($chars[$currentCharPos]{charID}, $email);
-        $timeout{'charlogin'}{'time'} = time;
+        $messageSender->sendCharDelete($chars[$config{char}]{charID}, $config{email});
         $args->{return} = 2;
-        $status = "character deleted";
-    } elsif ($status eq "character deleted") {
-        $messageSender->sendCharCreate($currentCharPos, $newCharName, $str, $agi, $vit, $int, $dex, $luk, $hair_style, $hair_color);
-        $timeout{'charlogin'}{'time'} = time;
-        $args->{return} = 2;
-        $status = "character created";
-    } elsif ($status eq "character created") {
-        $messageSender->sendCharLogin($currentCharPos);
+        $action = "char deleted";
+    }
+    elsif ($action eq "char deleted") {
+        $args->{return} = createCharacter();
+        return;
+    }
+    elsif ($action eq "char created") {
+        $messageSender->sendCharLogin($config{char});
         $timeout{'charlogin'}{'time'} = time;
         $args->{return} = 1;
-        configModify("char", $currentCharPos);
-        $status = "ready";
-        # Commands::run("reload macros");
     }
 }
-sub reincarnate_command {
-    $currentCharPos = $config{char};
-    $newCharName = generateName(int(rand(2)) + 4, int(rand(2)) + 4);
-    $hair_color = int(rand(12));
-    $hair_style = int(rand(12)) + 2;
-    print "$hair_color, $hair_style\n";
-    print "New name: $newCharName\n";
-    $status = "start";
-    $messageSender->sendQuitToCharSelect();
-}
-sub quitToCharSelect_command {
-    $messageSender->sendQuitToCharSelect();
+
+sub createCharacter {
+    my $name = generateName(int(rand(2)) + 4, int(rand(2)) + 4);
+    my $hair_color = int(rand(12));
+    my $hair_style = int(rand(12)) + 2;
+    $messageSender->sendCharCreate($config{char}, $name, $str, $agi, $vit, $int, $dex, $luk, $hair_style, $hair_color);
+    $action = "char created";
+    return 2
 }
 sub generateName {
     my $lengthS = shift;
