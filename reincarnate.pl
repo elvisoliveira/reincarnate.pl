@@ -54,7 +54,6 @@ sub charSelectScreen {
     my ($self, $args) = @_;
     if (!$chars[$config{char}]) {
         $args->{return} = createCharacter();
-        return;
     }
     if(!defined $action) {
         return;
@@ -64,20 +63,19 @@ sub charSelectScreen {
         if ($action eq "delete char") {
             $messageSender->sendBanCheck($charID);
             $messageSender->sendCharDelete($chars[$config{char}]{charID}, $config{email});
-            $timeout{'charlogin'}{'time'} = time;
             $args->{return} = 2;
-            $action = "char deleted";
+            $action = "create char";
         }
-        elsif ($action eq "char deleted") {
+        elsif ($action eq "create char") {
             $args->{return} = createCharacter();
-            return;
+            $action = "log char";
         }
-        elsif ($action eq "char created") {
+        elsif ($action eq "log char") {
             $messageSender->sendCharLogin($config{char});
-            $timeout{'charlogin'}{'time'} = time;
             $args->{return} = 1;
         }
     }
+    $timeout{'charlogin'}{'time'} = time;
 }
 
 sub createCharacter {
@@ -85,8 +83,6 @@ sub createCharacter {
     my $hair_color = int(rand(12));
     my $hair_style = int(rand(12)) + 2;
     $messageSender->sendCharCreate($config{char}, $name, $str, $agi, $vit, $int, $dex, $luk, $hair_style, $hair_color);
-    $timeout{'charlogin'}{'time'} = time;
-    $action = "char created";
     return 2
 }
 sub generateName {
