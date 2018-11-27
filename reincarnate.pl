@@ -1,5 +1,6 @@
 # This plugin is licensed under the GNU GPL
 # Copyright 2006 by kaliwanagan
+#           2018 by brand
 # --------------------------------------------------
 package reincarnate;
 
